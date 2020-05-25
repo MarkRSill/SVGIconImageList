@@ -3159,9 +3159,11 @@ var
   NumberStr: string;
   C: Char;
   HasDot: Boolean;
+  hasExp: Boolean;
 begin
   NumberStr := '';
   HasDot := False;
+  hasExp := False;
 
   Result := TStringList.Create;
 
@@ -3190,10 +3192,19 @@ begin
         begin
           if NumberStr <> '' then
           begin
-            Result.Add(NumberStr);
-            HasDot := False;
+            if not hasExp then begin
+              Result.Add(NumberStr);
+              HasDot := False;
+            end else
+              NumberStr := NumberStr + C;
           end;
-          NumberStr := C;
+          if not hasExp then
+            NumberStr := C;
+        end;
+      'e':
+        begin
+          hasExp := True;
+          NumberStr := NumberStr + C;
         end;
       ' ', #9, #$A, #$D:
         begin
