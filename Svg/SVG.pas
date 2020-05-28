@@ -31,7 +31,9 @@ interface
 
 uses
   Winapi.Windows, Winapi.GDIPOBJ, Winapi.GDIPAPI,
-  System.Classes, System.Math, System.NetEncoding, System.Math.Vectors, System.Types,
+  System.Classes, System.Math,
+  {$IF CompilerVersion > 28}System.NetEncoding,{$ELSE}IdCoderMIME,{$IFEND}
+  System.Math.Vectors, System.Types,
   Xml.XmlIntf,
   GDIPOBJ2, GDIPKerning, GDIPPathText,
   SVGTypes, SVGStyle;
@@ -2800,6 +2802,12 @@ begin
   FBounds.TopRight := Transform(FX + FWidth + SW, FY - SW);
   FBounds.BottomRight := Transform(FX + FWidth + SW, FY + Height + SW);
   FBounds.BottomLeft := Transform(FX - SW, FY + FHeight + SW);
+(*
+  FBounds.TopLeft := Transform(FX - SW, FY - SW);
+  FBounds.TopRight := Transform(FX + FWidth - SW, FY - SW);
+  FBounds.BottomRight := Transform(FX + FWidth - SW, FY + Height - SW);
+  FBounds.BottomLeft := Transform(FX - SW, FY + FHeight - SW);
+*)
 end;
 
 procedure TSVGRect.ConstructPath;
@@ -3159,11 +3167,11 @@ var
   NumberStr: string;
   C: Char;
   HasDot: Boolean;
-  hasExp: Boolean;
+  HasExp: Boolean;
 begin
   NumberStr := '';
   HasDot := False;
-  hasExp := False;
+  HasExp := False;
 
   Result := TStringList.Create;
 
@@ -3192,18 +3200,18 @@ begin
         begin
           if NumberStr <> '' then
           begin
-            if not hasExp then begin
+            if not HasExp then begin
               Result.Add(NumberStr);
               HasDot := False;
             end else
               NumberStr := NumberStr + C;
           end;
-          if not hasExp then
+          if not HasExp then
             NumberStr := C;
         end;
-      'e':
+      'E', 'e':
         begin
-          hasExp := True;
+          HasExp := True;
           NumberStr := NumberStr + C;
         end;
       ' ', #9, #$A, #$D:
@@ -3435,6 +3443,10 @@ var
   S: string;
   SA: TStreamAdapter;
 
+  {$IF CompilerVersion < 29}
+  Decoder64: TIdDecoderMIME;
+  {$IFEND}
+
   function IsValid(var S: string): Boolean;
   var
     Semicolon: Integer;
@@ -3466,7 +3478,16 @@ begin
     SS := TStringStream.Create(S);
     try
       FStream := TMemoryStream.Create;
+      {$IF CompilerVersion > 28}
       TNetEncoding.Base64.Decode(SS, FStream);
+      {$ELSE}
+        Decoder64 := TIdDecoderMIME.Create(nil);
+        Try
+          Decoder64.DecodeStream(S, FStream);
+        Finally
+          Decoder64.Free;
+        End;
+      {$IFEND}
       FStream.Position := 0;
       SA := TStreamAdapter.Create(FStream, soReference);
       FImage := TGPImage.Create(SA);
